@@ -1,0 +1,1 @@
+{"name":"anidex","version":"2.0.0","private":true,"scripts":{"dev":"wrangler dev","deploy":"wrangler deploy","db:migrate":"wrangler d1 migrations apply anidex-db --remote"},"devDependencies":{"wrangler":"^4.45.0"}}
