@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NatuurDex - Scan Dieren</title>
+  <title>AniDex - Ontdek dieren</title>
   
   <!-- PWA Meta Tags -->
   <meta name="theme-color" content="#1a472a">
@@ -269,21 +269,48 @@
       font-weight: bold;
       color: #FFD700;
     }
+    .confirm-box { margin-top: 18px; padding-top: 16px; border-top: 1px solid #ddd; }
+    .confirm-box p { color:#666; margin:5px 0 12px; }
+    .dex-section { background:rgba(255,255,255,.95); color:#333; padding:20px; border-radius:20px; margin-bottom:100px; }
+    .section-title { display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; }
+    .section-title p { color:#777; font-size:.9em; }
+    .small-btn { border:0; border-radius:50%; width:40px; height:40px; font-size:1.2em; cursor:pointer; }
+    .dex-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+    .dex-card { background:#f4f7f4; border:1px solid #e0e8e0; border-radius:14px; overflow:hidden; cursor:pointer; text-align:left; }
+    .dex-card-image { height:105px; background:linear-gradient(135deg,#dcebdd,#b8d5bc); display:flex; align-items:center; justify-content:center; font-size:3em; overflow:hidden; }
+    .dex-card-image img { width:100%; height:100%; object-fit:cover; }
+    .dex-card-body { padding:10px; }
+    .dex-card-body strong { display:block; color:#1a472a; }
+    .dex-card-body small { color:#777; }
+    .empty-state { grid-column:1/-1; text-align:center; color:#777; padding:25px 5px; }
+    .bottom-nav { position:fixed; z-index:50; bottom:0; left:0; right:0; height:74px; background:#fff; display:flex; justify-content:center; gap:35px; box-shadow:0 -3px 20px rgba(0,0,0,.18); }
+    .bottom-nav button { background:none; border:0; min-width:65px; font-size:1.45em; color:#31523a; cursor:pointer; }
+    .bottom-nav span { display:block; font-size:.48em; font-weight:700; margin-top:2px; }
+    .bottom-nav .scan-nav { transform:translateY(-14px); width:72px; height:72px; border-radius:50%; background:#4CAF50; color:#fff; box-shadow:0 4px 15px rgba(0,0,0,.25); }
+    .detail-overlay { display:none; position:fixed; z-index:100; inset:0; background:rgba(0,0,0,.72); padding:20px; align-items:center; justify-content:center; }
+    .detail-overlay.active { display:flex; }
+    .detail-card { position:relative; background:#fff; color:#333; width:min(500px,100%); max-height:85vh; overflow:auto; border-radius:20px; padding:22px; }
+    .detail-close { position:absolute; right:12px; top:10px; border:0; background:rgba(255,255,255,.9); border-radius:50%; width:36px; height:36px; font-size:1.6em; cursor:pointer; }
+    .detail-hero { height:180px; border-radius:14px; background:linear-gradient(135deg,#dcebdd,#b8d5bc); display:flex; align-items:center; justify-content:center; font-size:5em; margin-bottom:16px; overflow:hidden; }
+    .detail-hero img { width:100%; height:100%; object-fit:cover; }
+    .detail-card em { color:#777; }
+    .detail-meta { margin:14px 0; padding:10px; background:#f4f7f4; border-radius:10px; }
+    @media(max-width:420px){ body{padding:12px}.scan-section{padding:18px}.header h1{font-size:2em} }
   </style>
 </head>
 <body>
   <div class="container">
     <!-- Header -->
     <div class="header">
-      <h1>🦎 NatuurDex</h1>
-      <p class="subtitle">Scan en verzamel dieren!</p>
+      <h1>🦎 AniDex</h1>
+      <p class="subtitle">Ontdek, herken en verzamel dieren om je heen.</p>
     </div>
 
     <!-- Collection Stats -->
     <div class="collection-stats" id="collectionStats">
       <h3>Je Collectie</h3>
       <div class="stat" id="collectionCount">0</div>
-      <p>dieren gevangen</p>
+      <p>vondsten in je Dex</p>
     </div>
 
     <!-- Badges -->
@@ -359,16 +386,36 @@
           <span class="result-label">Omschrijving:</span>
           <p id="description">-</p>
         </div>
-        <button class="btn btn-primary" id="saveBtn">
-          💾 Opslaan in Dex
-        </button>
+        <div class="confirm-box">
+          <strong>Klopt deze herkenning?</strong>
+          <p>Controleer de soort voordat je hem aan je Dex toevoegt.</p>
+          <button class="btn btn-primary" id="saveBtn">✓ Ja, toevoegen aan Dex</button>
+          <button class="btn btn-secondary" id="retryBtn">↻ Nee, opnieuw scannen</button>
+        </div>
       </div>
     </div>
 
-    <!-- Collection Button -->
-    <button class="btn collection-btn" id="collectionBtn">
-      📚 Bekijk Volledige Collectie
-    </button>
+    <!-- Dex -->
+    <section class="dex-section" id="dexSection">
+      <div class="section-title"><div><h2>📚 Mijn Dex</h2><p>Jouw ontdekte dieren</p></div><button class="small-btn" id="refreshDexBtn">↻</button></div>
+      <div class="dex-grid" id="dexGrid"><p class="empty-state">Je Dex wordt geladen…</p></div>
+    </section>
+
+    <nav class="bottom-nav">
+      <button id="navDex">📚<span>Dex</span></button>
+      <button class="scan-nav" id="navScan">📷<span>Scannen</span></button>
+      <button id="navBadges">🏆<span>Badges</span></button>
+    </nav>
+
+    <div class="detail-overlay" id="detailOverlay">
+      <div class="detail-card">
+        <button class="detail-close" id="detailClose">×</button>
+        <div class="detail-hero" id="detailHero">🦎</div>
+        <h2 id="detailName"></h2><em id="detailScientific"></em>
+        <div class="detail-meta" id="detailMeta"></div>
+        <p id="detailDescription"></p>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -536,6 +583,8 @@
           alert('🎉 Dier toegevoegd aan je Dex!');
           loadBadges();
           loadCollectionStats();
+    loadDex();
+          loadDex();
           
           // Reset for new scan
           hideResult();
@@ -664,43 +713,44 @@
       }
     }
 
+    document.getElementById('retryBtn').addEventListener('click', () => {
+      hideResult(); currentAnimal = null; document.getElementById('cameraInput').click();
+    });
+
     // ============================================
     // COLLECTIE BEKIJKEN
     // ============================================
 
-    document.getElementById('collectionBtn').addEventListener('click', async () => {
-      showLoading(true);
-      
+    let dexAnimals = [];
+    async function loadDex() {
+      const grid = document.getElementById('dexGrid');
       try {
-        const response = await fetch(API_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            action: 'getCollection',
-            userId: userId
-          })
-        });
-
+        const response = await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'getCollection',userId})});
         const data = await response.json();
-        
-        if (data.success) {
-          if (data.animals.length === 0) {
-            alert('Je collectie is nog leeg! Scan je eerste dier.');
-          } else {
-            const list = data.animals.map(a => 
-              `🦎 ${a.species} (${a.category})`
-            ).join('\n');
-            alert(`Je hebt ${data.animals.length} dieren verzameld!\n\n${list}`);
-          }
-        }
-      } catch (error) {
-        showError('Kon collectie niet laden: ' + error.message);
-      } finally {
-        showLoading(false);
-      }
-    });
+        if (!data.success) throw new Error(data.error || 'Dex kon niet laden');
+        dexAnimals = data.animals || [];
+        if (!dexAnimals.length) { grid.innerHTML='<p class="empty-state">Nog geen dieren ontdekt. Scan je eerste dier! 📷</p>'; return; }
+        const groups = new Map();
+        dexAnimals.forEach((a,i)=>{ const key=(a.scientificName||a.species||i).toLowerCase(); if(!groups.has(key)) groups.set(key,{animal:a,count:0,index:i}); groups.get(key).count++; });
+        grid.innerHTML=[...groups.values()].map(g=>{ const a=g.animal; const image=a.image||a.imageUrl||a.photo||null; return '<button class="dex-card" data-index="'+g.index+'"><div class="dex-card-image">'+(image?'<img src="'+image+'" alt="">':'🦎')+'</div><div class="dex-card-body"><strong>'+escapeHtml(a.species||'Onbekend dier')+'</strong><small>'+escapeHtml(a.category||'')+(g.count>1?' · ×'+g.count:'')+'</small></div></button>'; }).join('');
+        grid.querySelectorAll('.dex-card').forEach(btn=>btn.addEventListener('click',()=>openAnimalDetail(dexAnimals[Number(btn.dataset.index)])));
+      } catch(e) { grid.innerHTML='<p class="empty-state">Dex kon niet geladen worden.</p>'; }
+    }
+    function escapeHtml(v){ const d=document.createElement('div'); d.textContent=String(v||''); return d.innerHTML; }
+    function openAnimalDetail(a){
+      document.getElementById('detailName').textContent=a.species||'Onbekend dier';
+      document.getElementById('detailScientific').textContent=a.scientificName||'';
+      document.getElementById('detailDescription').textContent=a.description||'Nog geen omschrijving beschikbaar.';
+      document.getElementById('detailMeta').textContent=(a.category?'Categorie: '+a.category:'')+(a.date?' · '+a.date:'');
+      const image=a.image||a.imageUrl||a.photo||null; document.getElementById('detailHero').innerHTML=image?'<img src="'+image+'" alt="">':'🦎';
+      document.getElementById('detailOverlay').classList.add('active');
+    }
+    document.getElementById('detailClose').addEventListener('click',()=>document.getElementById('detailOverlay').classList.remove('active'));
+    document.getElementById('detailOverlay').addEventListener('click',e=>{if(e.target.id==='detailOverlay') e.currentTarget.classList.remove('active')});
+    document.getElementById('refreshDexBtn').addEventListener('click',loadDex);
+    document.getElementById('navDex').addEventListener('click',()=>document.getElementById('dexSection').scrollIntoView({behavior:'smooth'}));
+    document.getElementById('navScan').addEventListener('click',()=>document.querySelector('.scan-section').scrollIntoView({behavior:'smooth'}));
+    document.getElementById('navBadges').addEventListener('click',()=>document.querySelector('.badge-section').scrollIntoView({behavior:'smooth'}));
 
     // ============================================
     // UI HELPERS
