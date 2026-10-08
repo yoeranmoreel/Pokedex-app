@@ -1,28 +1,50 @@
 # AniDex 🐾
 
-AniDex is een mobiele webapp waarmee je dieren fotografeert, laat herkennen en verzamelt in je eigen digitale natuur-Dex.
+AniDex is een mobiele webapp waarmee je dieren fotografeert, met AI laat herkennen en verzamelt in je persoonlijke natuur-Dex.
 
-## Architectuur v2
+## Opzet
 
-Browser → Cloudflare Worker → **D1** (metadata), **R2** (foto's) en **OpenAI** (dierherkenning).
+AniDex v2 is bewust geen single-page scherm meer. De app heeft aparte pagina's voor **Home**, **Scannen**, **Mijn Dex**, **Badges** en **Profiel/account** met een vaste mobiele navigatie.
 
-De Worker serveert zowel de frontend als `/api/*`. Google Apps Script en de oude CORS-proxy zijn niet meer nodig.
+```
+Browser
+  ↓
+Cloudflare Worker
+  ├─ D1      accounts, sessies en waarnemingen
+  ├─ R2      privé opgeslagen foto's
+  └─ OpenAI  dierherkenning
+```
+
+Google Apps Script en de oude CORS-proxy zijn niet meer nodig.
+
+## Accounts
+
+Gebruikers kunnen registreren en inloggen. Wachtwoorden worden niet opgeslagen: de Worker gebruikt PBKDF2-SHA256 met een unieke salt. Inloggen maakt een willekeurige sessie aan waarvan alleen de SHA-256 hash in D1 staat. De browser ontvangt een `HttpOnly; Secure; SameSite=Lax` cookie.
+
+Waarnemingen en foto's zijn aan het account gekoppeld. De media-endpoint controleert ook of de opgevraagde foto bij de ingelogde gebruiker hoort.
 
 ## Projectstructuur
 
-- `public/` — frontend
-- `src/worker.js` — API/backend
-- `migrations/` — D1-schema
-- `wrangler.jsonc` — Cloudflare-configuratie
-- `package.json` — scripts/dependencies
+- `public/index.html` — Home
+- `public/scan.html` — dier scannen
+- `public/dex.html` — verzameling
+- `public/badges.html` — prestaties
+- `public/account.html` — registreren/inloggen/profiel
+- `public/*.js` — pagina-logica
+- `public/shared.js` — gedeelde API/auth helpers
+- `src/worker.js` — backend/API
+- `migrations/` — D1 schema
+- `wrangler.jsonc` — Cloudflare-config
 
-## Cloudflare
+## Cloudflare-resources
 
-D1 `anidex-db` is aangemaakt in EU-jurisdiction. R2 bucket `anidex-photos` is geconfigureerd, maar **R2 moet op het account eerst via het Cloudflare-dashboard geactiveerd worden** voordat de bucket kan worden aangemaakt.
+D1: `anidex-db`, EU jurisdiction.
 
-De AI-key hoort uitsluitend als Worker secret `OPENAI_API_KEY` te bestaan en nooit in GitHub/frontendcode.
+R2: `anidex-photos`. R2 moet op het Cloudflare-account eerst geactiveerd zijn voordat de bucket aangemaakt kan worden.
 
-## Installatie en deploy
+Worker secret: `OPENAI_API_KEY`. Deze key hoort nooit in GitHub of frontendcode.
+
+## Installatie / deploy
 
 ```bash
 npm install
@@ -31,20 +53,23 @@ npx wrangler secret put OPENAI_API_KEY
 npm run deploy
 ```
 
-Na activeren van R2: maak eerst bucket `anidex-photos` aan.
+Maak na het activeren van R2 de bucket `anidex-photos` aan.
+
+## Database migrations
+
+- `0001_initial.sql` — waarnemingen
+- `0002_accounts.sql` — gebruikers en sessies
 
 ## API
 
-`GET /api/health`, `POST /api/identify`, `GET /api/sightings?userId=...`, `POST /api/sightings` en `GET /media/:key`.
+Auth: `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`.
 
-## Privacy/data
-
-Er is nog geen accountregistratie. Een willekeurige gebruiker-ID staat lokaal in de browser. GPS wordt alleen bij opslaan gevraagd en is optioneel. Foto's gaan naar R2; D1 bevat de metadata en fotoverwijzing.
+Dex: `POST /api/identify`, `GET /api/sightings`, `POST /api/sightings`, `GET /media/:key`.
 
 ## Roadmap
 
-Eerst een stabiele flow: scannen → herkennen → bevestigen → opslaan → Dex. Daarna handmatig corrigeren, kaart, badges/statistieken, accounts/synchronisatie en PWA/offline.
+Na de stabiele kern: handmatige correctie van herkenning, kaart, uitgebreidere badges/statistieken, wachtwoord-reset/e-mailverificatie en echte PWA/offline-ondersteuning.
 
 ## Oude prototype
 
-De eerste AniDex was één `index.html` op GitHub Pages → Cloudflare `pokedex-proxy` → Google Apps Script. Die architectuur is bewust vervangen vanwege de extra trage/onbetrouwbare laag en CORS-problemen. De oude code blijft via Git-history beschikbaar.
+De eerste AniDex was één `index.html` op GitHub Pages → Cloudflare `pokedex-proxy` → Google Apps Script. De oude code blijft via Git-history beschikbaar; de oude Worker wordt pas verwijderd wanneer v2 goed draait.
