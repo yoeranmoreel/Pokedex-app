@@ -7,7 +7,17 @@ function cookie(req,name){return req.headers.get("cookie")?.split(";").map(x=>x.
 async function currentUser(req,env){const token=cookie(req,"anidex_session");if(!token)return null;return env.DB.prepare("SELECT u.id,u.email,u.display_name,u.created_at FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>datetime('now')").bind(await sha(token)).first()}
 async function createSession(userId,env){const token=crypto.randomUUID()+crypto.randomUUID(),expiresAt=new Date(Date.now()+30*864e5).toISOString();await env.DB.prepare("INSERT INTO sessions(token_hash,user_id,expires_at) VALUES(?,?,?)").bind(await sha(token),userId,expiresAt).run();return `anidex_session=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`}
 function safeText(value,max){return String(value||"").trim().slice(0,max)}
-async function staticAsset(url){const path=url.pathname==="/"?"/index.html":url.pathname;if(path.includes("..")||path.includes("\\"))return new Response("Not found",{status:404});const raw="https://raw.githubusercontent.com/yoeranmoreel/Pokedex-app/main/public"+path;const response=await fetch(raw,{cf:{cacheEverything:true,cacheTtl:60}});if(!response.ok)return new Response("Not found",{status:404});const headers=new Headers(response.headers);headers.set("cache-control","public,max-age=60");headers.delete("set-cookie");return new Response(response.body,{status:response.status,headers})}
+async function staticAsset(url){
+  const path=url.pathname==="/"?"/index.html":url.pathname;
+  if(path.includes("..")||path.includes("\\"))return new Response("Not found",{status:404});
+  const raw="https://raw.githubusercontent.com/yoeranmoreel/Pokedex-app/main/public"+path;
+  const response=await fetch(raw,{cf:{cacheEverything:true,cacheTtl:30}});
+  if(!response.ok)return new Response("Not found",{status:404});
+  const ext=path.split(".").pop().toLowerCase();
+  const types={html:"text/html;charset=utf-8",js:"text/javascript;charset=utf-8",css:"text/css;charset=utf-8",webmanifest:"application/manifest+json;charset=utf-8",svg:"image/svg+xml;charset=utf-8",json:"application/json;charset=utf-8"};
+  const body=await response.arrayBuffer();
+  return new Response(body,{status:200,headers:{"content-type":types[ext]||"application/octet-stream","cache-control":ext==="html"?"no-store":"public,max-age=30","x-content-type-options":"nosniff"}});
+}
 
 export default{async fetch(req,env){
   const url=new URL(req.url);
@@ -15,7 +25,7 @@ export default{async fetch(req,env){
   try{
     if(req.method!=="GET"&&req.method!=="HEAD"){const origin=req.headers.get("origin");if(origin&&origin!==url.origin)return J({error:"Ongeldige herkomst"},403)}
 
-    if(url.pathname==="/api/health")return J({ok:true,app:"AniDex",version:"2.2.0"});
+    if(url.pathname==="/api/health")return J({ok:true,app:"AniDex",version:"2.2.1"});
 
     if(url.pathname==="/api/auth/register"&&req.method==="POST"){
       const body=await req.json(),email=safeText(body.email,160).toLowerCase(),name=safeText(body.displayName,40),password=String(body.password||"");
